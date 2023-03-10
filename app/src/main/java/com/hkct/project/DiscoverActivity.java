@@ -87,7 +87,7 @@ public class DiscoverActivity extends AppCompatActivity {
             });
 
             // get all users posts
-            query = firestore.collection("Posts").orderBy("time", Query.Direction.DESCENDING);
+            query = firestore.collection("events").orderBy("time", Query.Direction.DESCENDING);
 
             listenerRegistration = query.addSnapshotListener(DiscoverActivity.this, new EventListener<QuerySnapshot>() {
                 @Override

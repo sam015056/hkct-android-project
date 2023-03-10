@@ -1,11 +1,15 @@
 package com.hkct.project;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.cardview.widget.CardView;
+import androidx.appcompat.view.menu.ActionMenuItem;
 import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Color;
@@ -13,124 +17,184 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ListAdapter;
-import android.widget.ListView;
-import android.widget.SimpleAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.DocumentChange;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.EventListener;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreException;
+import com.google.firebase.firestore.ListenerRegistration;
+import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.QuerySnapshot;
+import com.hkct.project.Adapter.EventAdapter;
+import com.hkct.project.Model.Event;
+import com.hkct.project.Model.Users;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.List;
+import java.util.Queue;
 
 public class EventsActivity extends AppCompatActivity {
 
-    private final String TAG="EventsActivity===>";
+    private final String TAG="DiscoverActivity===>";
     private TextView txtOutput;
     private DrawerLayout drawerLayout;
     private NavigationView navView;
     private ActionBarDrawerToggle actionBarDrawerToggle;
 
-    private TextView noteId;
-    private DBHelper dbhelper = new DBHelper(this);
-    private ListView listView;
-
-    private CardView card1;
+    private FirebaseFirestore firestore;
+    private FirebaseAuth firebaseAuth;
+    private RecyclerView mRecyclerView;
+    private EventAdapter adapter;
+    private List<Event> list;
+    private Query query;
+    private ListenerRegistration listenerRegistration;
+    private List<Users> usersList;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_events);
 
 
-        //ActivityName
-        setTitle("");
+        firebaseAuth = FirebaseAuth.getInstance();
+        firestore = FirebaseFirestore.getInstance();
 
-        // Navigation drawer icon always appear on the action bar
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        mRecyclerView = findViewById(R.id.recyclerView_event);
 
-        setNavigationDrawer();
+        mRecyclerView.setHasFixedSize(true);
+        mRecyclerView.setLayoutManager(new LinearLayoutManager(EventsActivity.this));
 
-        Log.d(TAG,"===>eventsActivity!!!");
+        list = new ArrayList<>();
+        usersList = new ArrayList<>();
+        adapter = new EventAdapter(EventsActivity.this, list, usersList);
+        mRecyclerView.setAdapter(adapter);
 
-        // Create List
-        ArrayList<HashMap<String, String>> noteList =  dbhelper.getAllNotes();
-
-        // Construct listView
-        if(noteList.size()!=0) {
-            listView = findViewById(R.id.listView);
-            // Set onclick listener
-            listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        if (firebaseAuth.getCurrentUser() != null) {
+            mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
                 @Override
-                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                    noteId = view.findViewById(R.id.noteId);
-                    String Id = noteId.getText().toString();
-                    Intent intent = new Intent(getApplicationContext(),EditEventsActivity.class);
-                    intent.putExtra("noteId", Id);
-                    startActivity(intent);
+                public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                    super.onScrolled(recyclerView, dx, dy);
+                    Boolean isBottom = !mRecyclerView.canScrollVertically(1);
+                    if (isBottom)
+                        Toast.makeText(EventsActivity.this, "Reached Bottom", Toast.LENGTH_SHORT).show();
                 }
             });
-            ListAdapter adapter = new SimpleAdapter(EventsActivity.this,
-                    noteList,
-                    R.layout.note_row,
-                    new String[] { "noteId","noteDesc", "eventName", "eventAddress", "text_date", "text_time"},
-                    new int[] {R.id.noteId, R.id.noteDesc, R.id.eventName, R.id.eventAddress , R.id.text_date , R.id.text_time}
-            );
-            listView.setAdapter(adapter);
-        }
-    } //onCreate()
 
-    private void setNavigationDrawer(){
-        // drawer layout instance
+            // get all users posts
+            query = firestore.collection("Posts").orderBy("time", Query.Direction.DESCENDING);
+
+            listenerRegistration = query.addSnapshotListener(EventsActivity.this, new EventListener<QuerySnapshot>() {
+                @Override
+                public void onEvent(@Nullable QuerySnapshot value, @Nullable FirebaseFirestoreException error) {
+                    for (DocumentChange doc : value.getDocumentChanges()) {
+                        if (doc.getType() == DocumentChange.Type.ADDED) {
+                            String eventId = doc.getDocument().getId();
+                            Event event = doc.getDocument().toObject(Event.class).withId(eventId);
+                            String eventUserId = doc.getDocument().getString("user");
+                            firestore.collection("Users").document(eventUserId).get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+                                @Override
+                                public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                                    if (task.isSuccessful()) {
+                                        Users users = task.getResult().toObject(Users.class);
+                                        usersList.add(users);
+                                        list.add(event);
+                                        adapter.notifyDataSetChanged();
+                                    } else {
+                                        Toast.makeText(EventsActivity.this, task.getException().getMessage(), Toast.LENGTH_SHORT).show();
+                                    }
+                                }
+                            });
+                        } else {
+                            adapter.notifyDataSetChanged();
+                        }
+                    }
+                    listenerRegistration.remove();
+                }
+            });
+        }
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        setNavigationDrawer();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        FirebaseUser currentUser = firebaseAuth.getCurrentUser();
+        if (currentUser == null) {
+            startActivity(new Intent(EventsActivity.this, LoginActivity.class));
+            finish();
+        } else {
+            String currentUserId = firebaseAuth.getCurrentUser().getUid();
+            firestore.collection("Users").document(currentUserId).get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+                @Override
+                public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                    if (task.isSuccessful()) {
+                        if (!task.getResult().exists()) {
+                            startActivity(new Intent(EventsActivity.this, SetUpActivity.class));
+                            finish();
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    private void setNavigationDrawer() {
         drawerLayout = findViewById(R.id.drawerLayout);
-        // Toggle the menu icon
         actionBarDrawerToggle = new ActionBarDrawerToggle(this,drawerLayout,R.string.nav_open,R.string.nav_close);
         actionBarDrawerToggle.syncState();
-
-        // pass the toggle for the drawer layout listener
         drawerLayout.addDrawerListener(actionBarDrawerToggle);
+    }
 
-    } //setNavigationDrawer()
-
-    // override the onOptionsItemSelected() function to implement
-    // the item click listener callback to open and close the navigation
-    // drawer when the icon is clicked
     @Override
-    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        Log.d(TAG,"onOptionsItemSelected->" + item.getItemId());
+    public boolean onOptionsItemSelected(MenuItem item) {
 
-//        if (item.getItemId()==R.id.nav_account){
-//            Log.d(TAG,"onOptionsItemSelected->" + "id=" + R.id.nav_account + "title=" + item.getTitle());
-//            txtOutput.setText("Account clicked");
-//        }
-
+        Log.d(TAG, "onOptionsItemSelected->" + item.getItemId());
+        if (item.getItemId() == R.id.nav_events) {
+            Log.d(TAG, "onOptionsItemSelected->" + "id=" + R.id.nav_events + "title=" + item.getTitle());
+            txtOutput.setText("Event clicked");
+        }
         if (actionBarDrawerToggle.onOptionsItemSelected(item)) {
             return true;
         }
         return super.onOptionsItemSelected(item);
-    } //onOptionsItemSelected()
+    }
 
-    public void menu1_click(MenuItem m){
-        Log.d(TAG,"menu1_click()->" + m.getItemId() + ","+ m.getTitle());
-        startActivity(new Intent(this, DiscoverActivity.class));
+//    @Override
+//    public boolean onCreateOptionsMenu(Menu menu) {
+//        getMenuInflater().inflate(R.menu.nav_menu, menu);
+//        return true;
+//    }
+
+    //   Discover
+    public void menu1_click(MenuItem menuItem) {
+        Log.d(TAG,"menu1_click()->" + menuItem.getItemId() + ","+ menuItem.getTitle());
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+        startActivity(new Intent(this, DiscoverActivity.class));
         drawerLayout.closeDrawers();
     }
-//    public void menu2_click(MenuItem m){
-//        Log.d(TAG,"menu2_click()->" + m.getItemId() + ","+ m.getTitle());
-////        txtOutput.setText(R.string.msg2);
+
+//    public void menu2_click(MenuItem menuItem) {
+//        Log.d(TAG,"menu2_click()->" + menuItem.getItemId() + ","+ menuItem.getTitle());
 //        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+////        txtOutput.setText(R.string.msg2);
+////        txtOutput.setTextColor(Color.RED);
 //        drawerLayout.closeDrawers();
 //    }
 
     //   Profile
-    public void menu3_click(MenuItem m){
-        Log.d(TAG,"menu3_click()->" + m.getItemId() + ","+ m.getTitle());
-        startActivity(new Intent(this, ProfileActivity.class));
+    public void menu3_click(MenuItem menuItem) {
+        Log.d(TAG,"menu3_click()->" + menuItem.getItemId() + ","+ menuItem.getTitle());
 //        txtOutput.setText(R.string.msg3);
+//        txtOutput.setTextColor(Color.RED);
+        startActivity(new Intent(this, ProfileActivity.class));
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
         drawerLayout.closeDrawers();
     }
@@ -143,9 +207,9 @@ public class EventsActivity extends AppCompatActivity {
         drawerLayout.closeDrawers();
     }
 
-//    MembershipActivity
+    //    MembershipActivity
     public void menu6_click(MenuItem menuItem) {
-        Log.d(TAG,"menu6_click()->" + menuItem.getItemId() + ","+ menuItem.getTitle());
+        Log.d(TAG, "menu6_click()->" + menuItem.getItemId() + "," + menuItem.getTitle());
         startActivity(new Intent(this, MembershipActivity.class));
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
         drawerLayout.closeDrawers();
@@ -159,18 +223,9 @@ public class EventsActivity extends AppCompatActivity {
         drawerLayout.closeDrawers();
     }
 
-//    public void menu4_click(MenuItem m){
-//        Log.d(TAG,"menu3_click()->" + m.getItemId() + ","+ m.getTitle());
-//        FirebaseAuth.getInstance().signOut();
-//        startActivity(new Intent(this, LoginActivity.class));
-//        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
-//        Toast.makeText(EventsActivity.this, "Logout successful", Toast.LENGTH_SHORT).show();
-//        drawerLayout.closeDrawers();
-//    }
-
-    // add events btn
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.posts_add, menu);
         getMenuInflater().inflate(R.menu.profile, menu);
         getMenuInflater().inflate(R.menu.logout, menu);
         return super.onCreateOptionsMenu(menu);
@@ -180,9 +235,8 @@ public class EventsActivity extends AppCompatActivity {
         startActivity(new Intent(getApplicationContext(),SetUpActivity.class));
     }
 
-    public void menu_add_click(MenuItem m){
-        startActivity(new Intent(getApplicationContext(),AddEventsActivity.class));
-        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+    public void menu_add_post_click(MenuItem m) {
+        startActivity(new Intent(EventsActivity.this, AddPostActivity.class));
     }
 
     public void menu_logout_click(MenuItem m) {
@@ -192,17 +246,13 @@ public class EventsActivity extends AppCompatActivity {
         Toast.makeText(EventsActivity.this, "Logout successful", Toast.LENGTH_SHORT).show();
     }
 
-
-    public void addClick(View v) {
-        startActivity(new Intent(this, AddEventsActivity.class));
-
-        int version = Integer.valueOf(android.os.Build.VERSION.SDK);
-        if (version >= 5) {
-
-//            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
-            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
-        }
-        this.finish();
-    }
+    //    public void menu4_click(MenuItem menuItem) {
+//        Log.d(TAG,"menu4_click()->" + menuItem.getItemId() + ","+ menuItem.getTitle());
+//        txtOutput.setTextColor(Color.RED);
+//        FirebaseAuth.getInstance().signOut();
+//        startActivity(new Intent(this, LoginActivity.class));
+//        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+//        Toast.makeText(DiscoverActivity.this, "Logout successful", Toast.LENGTH_SHORT).show();
+//        drawerLayout.closeDrawers();
+//    }
 }
-

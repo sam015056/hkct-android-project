@@ -10,8 +10,22 @@
         <entry key="..\:/Users/Student/Desktop/android/app/src/main/res/layout/activity_location_picker2.xml" value="0.1" />
         <entry key="..\:/Users/Student/Desktop/android/app/src/main/res/layout/activity_login.xml" value="0.17806484295845998" />
         <entry key="..\:/Users/Student/Desktop/android/app/src/main/res/layout/each_post.xml" value="0.13451086956521738" />
+        <entry key="..\:/Users/Student/Documents/GitHub/hkct-android-project/app/src/main/res/layout/activity_add_events.xml" value="0.358695652173913" />
+        <entry key="..\:/Users/Student/Documents/GitHub/hkct-android-project/app/src/main/res/layout/activity_add_post.xml" value="0.358695652173913" />
+        <entry key="..\:/Users/Student/Documents/GitHub/hkct-android-project/app/src/main/res/layout/activity_discover.xml" value="0.358695652173913" />
         <entry key="..\:/Users/Student/Documents/GitHub/hkct-android-project/app/src/main/res/layout/activity_events.xml" value="0.1" />
+        <entry key="..\:/Users/Student/Documents/GitHub/hkct-android-project/app/src/main/res/layout/activity_location_picker.xml" value="0.358695652173913" />
+        <entry key="..\:/Users/Student/Documents/GitHub/hkct-android-project/app/src/main/res/layout/activity_membership.xml" value="0.358695652173913" />
+        <entry key="..\:/Users/Student/Documents/GitHub/hkct-android-project/app/src/main/res/layout/activity_profile.xml" value="0.358695652173913" />
+        <entry key="..\:/Users/Student/Documents/GitHub/hkct-android-project/app/src/main/res/layout/activity_set_up.xml" value="0.358695652173913" />
+        <entry key="..\:/Users/Student/Documents/GitHub/hkct-android-project/app/src/main/res/layout/activity_splash.xml" value="0.358695652173913" />
+        <entry key="..\:/Users/Student/Documents/GitHub/hkct-android-project/app/src/main/res/layout/each_event.xml" value="0.358695652173913" />
+        <entry key="..\:/Users/Student/Documents/GitHub/hkct-android-project/app/src/main/res/layout/each_post.xml" value="0.358695652173913" />
+        <entry key="..\:/Users/Student/Documents/GitHub/hkct-android-project/app/src/main/res/layout/eventrow.xml" value="0.358695652173913" />
         <entry key="..\:/Users/Student/Documents/GitHub/hkct-android-project/app/src/main/res/layout/note_row.xml" value="0.1" />
+        <entry key="..\:/Users/Student/Documents/GitHub/hkct-android-project/app/src/main/res/layout/users_row.xml" value="0.358695652173913" />
+        <entry key="..\:/Users/Student/Documents/GitHub/hkct-android-project/app/src/main/res/menu/events_add.xml" value="0.36614583333333334" />
+        <entry key="..\:/Users/Student/Documents/GitHub/hkct-android-project/app/src/main/res/menu/posts_add.xml" value="0.36614583333333334" />
       </map>
     </option>
   </component>

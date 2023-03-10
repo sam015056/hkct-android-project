@@ -1,173 +1,136 @@
 package com.hkct.project;
 
-import android.Manifest;
-import android.app.ProgressDialog;
-import android.content.Intent;
-import android.net.Uri;
-import android.os.Bundle;
-import android.view.View;
-import android.webkit.MimeTypeMap;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.MediaController;
-import android.widget.Toast;
-import android.widget.VideoView;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.google.android.gms.tasks.OnFailureListener;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.ProgressBar;
+import android.widget.Toast;
+
+import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.FieldValue;
+import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.storage.FirebaseStorage;
-import com.google.firebase.storage.OnProgressListener;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
-import com.hkct.project.Model.EventModel;
-import com.karumi.dexter.Dexter;
-import com.karumi.dexter.PermissionToken;
-import com.karumi.dexter.listener.PermissionDeniedResponse;
-import com.karumi.dexter.listener.PermissionGrantedResponse;
-import com.karumi.dexter.listener.PermissionRequest;
-import com.karumi.dexter.listener.single.PermissionListener;
+import com.theartofdev.edmodo.cropper.CropImage;
+import com.theartofdev.edmodo.cropper.CropImageView;
+
+import java.util.HashMap;
 
 public class AddEventsActivity extends AppCompatActivity {
 
     private static final int REQUEST_CODE = 1;
 
-    VideoView videoView;
-    Button browse,upload;
-    Uri videouri;
-    EditText vtitle;
-    MediaController mediaController;
-    StorageReference storageReference;
-    DatabaseReference databaseReference;
-
+    private Button mAddEventBtn;
+    private EditText mCaptionText;
+    private ImageView mEventImage;
+    private ProgressBar mProgressBar;
+    private Uri eventImageUri = null;
+    private StorageReference storageReference;
+    private FirebaseFirestore firestore;
+    private FirebaseAuth auth;
+    private String currentUserId;
 
     @Override
-    public void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add_events);
 
-        vtitle=(EditText)findViewById(R.id.vtitle);
-        storageReference=FirebaseStorage.getInstance().getReference();
-        databaseReference=FirebaseDatabase.getInstance().getReference("myvideos");
+        mAddEventBtn = findViewById(R.id.save_event_btn);
+        mCaptionText = findViewById(R.id.caption_text);
+        mEventImage = findViewById(R.id.event_image);
 
+        mProgressBar = findViewById(R.id.post_progressBar);
+        mProgressBar.setVisibility(View.INVISIBLE);
 
-        videoView=(VideoView)findViewById(R.id.videoView);
-        upload=(Button)findViewById(R.id.upload);
-        browse=(Button)findViewById(R.id.browse);
-        mediaController=new MediaController(this);
-        videoView.setMediaController(mediaController);
-        videoView.start();
+        storageReference = FirebaseStorage.getInstance().getReference();
+        firestore = FirebaseFirestore.getInstance();
+        auth = FirebaseAuth.getInstance();
+        currentUserId = auth.getCurrentUser().getUid();
 
-        browse.setOnClickListener(new View.OnClickListener() {
+        mEventImage.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-
-                Dexter.withContext(getApplicationContext())
-                        .withPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
-                        .withListener(new PermissionListener() {
-                            @Override
-                            public void onPermissionGranted(PermissionGrantedResponse permissionGrantedResponse) {
-                                Intent intent=new Intent();
-                                intent.setType("video/*");
-                                intent.setAction(Intent.ACTION_GET_CONTENT);
-                                startActivityForResult(intent,101);
-                            }
-
-                            @Override
-                            public void onPermissionDenied(PermissionDeniedResponse permissionDeniedResponse) {
-
-                            }
-
-                            @Override
-                            public void onPermissionRationaleShouldBeShown(PermissionRequest permissionRequest, PermissionToken permissionToken) {
-                                permissionToken.continuePermissionRequest();
-                            }
-                        }).check();
+                CropImage.activity()
+                        .setGuidelines(CropImageView.Guidelines.ON)
+                        .setAspectRatio(3,2)
+                        .setMinCropResultSize(512, 512)
+                        .start(AddEventsActivity.this);
             }
         });
-
-
-        upload.setOnClickListener(new View.OnClickListener() {
+        mAddEventBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                processvideouploading();
+                mProgressBar.setVisibility(View.VISIBLE);
+                String caption = mCaptionText.getText().toString();
+                if (!caption.isEmpty() && eventImageUri != null) {
+                    StorageReference eventRef = storageReference.child("event_images").child(FieldValue.serverTimestamp().toString() + ".jpg");
+                    eventRef.putFile(eventImageUri).addOnCompleteListener(new OnCompleteListener<UploadTask.TaskSnapshot>() {
+                        @Override
+                        public void onComplete(@NonNull Task<UploadTask.TaskSnapshot> task) {
+                            if (task.isSuccessful()) {
+                                eventRef.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+                                    @Override
+                                    public void onSuccess(Uri uri) {
+                                        HashMap<String, Object> postMap = new HashMap<>();
+                                        postMap.put("image", uri.toString());
+                                        postMap.put("user", currentUserId);
+                                        postMap.put("caption", caption);
+                                        postMap.put("time", FieldValue.serverTimestamp());
+
+                                        firestore.collection("Posts").add(postMap).addOnCompleteListener(new OnCompleteListener<DocumentReference>() {
+                                            @Override
+                                            public void onComplete(@NonNull Task<DocumentReference> task) {
+                                                if (task.isSuccessful()) {
+                                                    mProgressBar.setVisibility(View.INVISIBLE);
+                                                    Toast.makeText(AddEventsActivity.this, "Post Added Successfully!!", Toast.LENGTH_SHORT).show();
+                                                    startActivity(new Intent(AddEventsActivity.this, DiscoverActivity.class));
+                                                } else {
+                                                    mProgressBar.setVisibility(View.INVISIBLE);
+                                                    Toast.makeText(AddEventsActivity.this, task.getException().toString(), Toast.LENGTH_SHORT).show();
+                                                }
+                                            }
+                                        });
+                                    }
+                                });
+                            } else {
+                                mProgressBar.setVisibility(View.INVISIBLE);
+                                Toast.makeText(AddEventsActivity.this, task.getException().getMessage(), Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    });
+                } else {
+                    mProgressBar.setVisibility(View.INVISIBLE);
+                    Toast.makeText(AddEventsActivity.this, "Please Add Image and Write Your Caption", Toast.LENGTH_SHORT).show();
+                }
             }
         });
-
-
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == CropImage.CROP_IMAGE_ACTIVITY_REQUEST_CODE) {
+            CropImage.ActivityResult result = CropImage.getActivityResult(data);
+            if (resultCode == RESULT_OK) {
 
-        if(requestCode==101 && resultCode==RESULT_OK)
-        {
-            videouri=data.getData();
-            videoView.setVideoURI(videouri);
-
+                eventImageUri = result.getUri();
+                mEventImage.setImageURI(eventImageUri);
+            } else if (resultCode == CropImage.CROP_IMAGE_ACTIVITY_RESULT_ERROR_CODE) {
+                Toast.makeText(this, result.getError().toString(), Toast.LENGTH_SHORT).show();
+            }
         }
-
-    }
-
-    public String getExtension()
-    {
-        MimeTypeMap mimeTypeMap=MimeTypeMap.getSingleton();
-        return  mimeTypeMap.getExtensionFromMimeType(getContentResolver().getType(videouri));
-    }
-
-    public void processvideouploading()
-    {
-        final ProgressDialog pd=new ProgressDialog(this);
-        pd.setTitle("Media Uploader");
-        pd.show();
-
-        final StorageReference uploader=storageReference.child("myvideos/"+System.currentTimeMillis()+"."+getExtension());
-        uploader.putFile(videouri)
-                .addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
-                    @Override
-                    public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                        uploader.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
-                            @Override
-                            public void onSuccess(Uri uri) {
-                                EventModel obj=new EventModel(vtitle.getText().toString(),uri.toString());
-                                databaseReference.child(databaseReference.push().getKey()).setValue(obj)
-                                        .addOnSuccessListener(new OnSuccessListener<Void>() {
-                                            @Override
-                                            public void onSuccess(Void aVoid) {
-                                                pd.dismiss();
-                                                Toast.makeText(getApplicationContext(),"Successfully uploaded",Toast.LENGTH_LONG).show();
-                                            }
-                                        })
-                                        .addOnFailureListener(new OnFailureListener() {
-                                            @Override
-                                            public void onFailure(@NonNull Exception e) {
-                                                pd.dismiss();
-                                                Toast.makeText(getApplicationContext(),"Failed to upload",Toast.LENGTH_LONG).show();
-                                            }
-                                        });
-
-                            }
-                        });
-                    }
-                })
-                .addOnProgressListener(new OnProgressListener<UploadTask.TaskSnapshot>() {
-                    @Override
-                    public void onProgress(@NonNull UploadTask.TaskSnapshot snapshot) {
-                        float per=(100*snapshot.getBytesTransferred())/snapshot.getTotalByteCount();
-                        pd.setMessage("Uploaded :"+(int)per+"%");
-                    }
-                });
-
-    }
-
-    public void btnBackClick(View v){
-        startActivity(new Intent(this, EventsActivity.class));
-        this.finish();
     }
 }
