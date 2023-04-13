@@ -25,37 +25,35 @@
         android:layout_weight="1"
         android:gravity="top">
 
-        <androidx.cardview.widget.CardView
-            android:id="@+id/card_view"
-            android:layout_width="406dp"
-            android:layout_height="328dp"
-            android:layout_gravity="center"
-            app:cardCornerRadius="4dp">
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="263dp"
+            android:src="@drawable/badminton" />
 
-            <TextView
-                android:id="@+id/info_text"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent" />
-        </androidx.cardview.widget.CardView>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="羽毛球的注意事項"/>
 
-        <androidx.cardview.widget.CardView
-            android:id="@+id/cardview"
-            android:layout_width="406dp"
-            android:layout_height="328dp"
-            android:layout_gravity="center"
-            app:cardCornerRadius="4dp">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="141dp"
+            android:text="羽毛球是相對劇烈的有氧運動，需針對身體狀況調整運動時間，尤其本身有糖尿病、心血管疾病病史的人，最好諮詢醫師自身身體狀況是否能打羽毛球。\n運動前一定要熱身，運動完後可以稍做按摩，緩解緊繃的肌肉。\n初學羽毛球的學員，需要避免用力過猛導致手腕或手肘出現受傷。" />
 
-            <ImageView
-                android:layout_width="match_parent"
-                android:layout_height="137dp"
-                android:src="@drawable/badminton" />
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="263dp"
+            android:src="@drawable/badminton_img" />
 
-            <TextView
-                android:id="@+id/infotext"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                />
-        </androidx.cardview.widget.CardView>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="握拍方式"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="正拍揮拍方式：\n1.長球 -- 預備擊球時，側身呈拉弓姿勢，右手持拍者右腳在後，以左手鎖定球的飛行，左手持拍者反之，擊球時放鬆手腕，手臂打直，拍面揚上。\n2.殺球及後場切球 -- 揮拍方式與長球大同小異，差別在於擊球時拍面朝下，切球時則力道放小。\n反手揮拍方式：轉身背對球行進方向，右手持拍者右腳跨左， 以右手軸鎖定球，運用手腕控制拍面擊球角度，以打出長球、切球或殺球。"/>
 
     </LinearLayout>
     </LinearLayout>
