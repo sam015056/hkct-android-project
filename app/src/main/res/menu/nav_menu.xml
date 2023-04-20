@@ -23,8 +23,18 @@
         android:title="Events" />
 
     <item
-        android:id="@+id/nav_membership"
+        android:id="@+id/nav_information"
         android:onClick="menu6_click"
+        android:title="Information" />
+
+    <item
+        android:id="@+id/nav_video"
+        android:onClick="menu7_click"
+        android:title="Video" />
+
+    <item
+        android:id="@+id/nav_membership"
+        android:onClick="menu8_click"
         android:title="Membership" />
 
 <!--    <item-->
